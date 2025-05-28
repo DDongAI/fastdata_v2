@@ -1,3 +1,4 @@
+import asyncio
 import io
 import os
 import re
@@ -9,20 +10,57 @@ from fastapi import UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from config.config import settings
-from core.file import pdf_ocr_service
-from core.tools import verify_file_type, read_text_file, process_str
+from core.file import pdf_ocr_service, get_status
+from core.tools import verify_file_type, read_text_file, process_str, save_file, delete_dir, read_md
 from schemas.util import ResponseModel
 from services.llm import chat_service
 
 router = APIRouter()
 
 
+@router.get("/init")
+async def init(user_id: str = ""):
+    """
+    在进入数据清洗页面前初始化，清除用户缓存记录，避免脏数据污染 \n
+    :param user_id: \n
+    :return:
+    """
+    if not user_id or user_id == "" or user_id is None or user_id == " ":
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": 400,
+                "message": "用户ID错误",
+                "data": " "
+            }
+        )
+    try:
+        # 清空用户缓存文件
+        await delete_dir(f"{settings.UPLOAD_DIR}/{user_id}")
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": 500,
+                "message": f"服务器内部错误: {str(e)}",
+                "data": " "
+            }
+        )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "code": 200,
+            "message": "init success",
+        }
+    )
+
+
 @router.post("/upload", response_model=ResponseModel)
 async def upload_file(file: UploadFile = File(...), user_id: str = ""):
     """
-    上传文件
-    :param file:
-    :param user_id:
+    上传文件 \n
+    :param file: \n
+    :param user_id: \n
     :return:
     """
     if not file:
@@ -56,13 +94,15 @@ async def upload_file(file: UploadFile = File(...), user_id: str = ""):
             }
         )
     try:
-        result, mime_type = await pdf_ocr_service(file, user_id)
+        # 保存文件
+        file_path = await save_file(file, user_id)
+        # 开启异步线程执行任务
+        asyncio.create_task(pdf_ocr_service(file_path, user_id))
         return JSONResponse(
             status_code=200,
             content={
                 "code": 200,
-                "message": f"success，文件类型: {mime_type}",
-                "data": f"```markdown\n{result}\n```"
+                "message": "success",
             }
         )
     except HTTPException as e:
@@ -83,6 +123,86 @@ async def upload_file(file: UploadFile = File(...), user_id: str = ""):
                 "data": " "
             }
         )
+
+
+@router.get("/status")
+async def status(user_id: str = ""):
+    """
+    查询文件清洗状态 \n
+    :param user_id: \n
+    :return:
+    """
+    if not user_id or user_id == "" or user_id is None or user_id == " ":
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": 400,
+                "message": "用户ID错误",
+                "data": " "
+            }
+        )
+    try:
+        # 获取文件状态
+        result = await get_status(user_id)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": 500,
+                "message": f"服务器内部错误: {str(e)}",
+                "data": " "
+            }
+        )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "code": 200,
+            "message": "success",
+            "data": {
+                "user_id": user_id,
+                "status": result
+            }
+            # "data": {"status": status}
+        }
+    )
+
+
+@router.get("/getfile")
+async def get_md(user_id: str = "", file_name: str = ""):
+    """
+    获取文件内容，参数不能带文件后缀名 \n
+    :param user_id: \n
+    :param file_name: 不能携带文件后缀名 \n
+    :return:
+    """
+    if not user_id or user_id == " " or user_id == "" or user_id is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": 400,
+                "message": "用户名错误",
+                "data": " "
+            }
+        )
+    if not file_name or file_name == " " or file_name == "" or file_name is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "code": 400,
+                "message": "文件错误",
+                "data": " "
+            }
+        )
+    # 读文件
+    result = await read_md(file_name, user_id)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "code": 200,
+            "message": "success",
+            "data": result
+        }
+    )
 
 
 @router.post("/download")

@@ -81,8 +81,8 @@ class ChatService:
                 model=self.model,
                 messages=messages,
                 temperature=0.4,
-                max_tokens=2000,
-                timeout=100
+                max_tokens=4096,
+                timeout=180
             )
 
             return response.choices[0].message.content
