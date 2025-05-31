@@ -61,7 +61,10 @@ async def upload_file(file: UploadFile = File(...), user_id: str = ""):
     上传文件 \n
     :param file: \n
     :param user_id: \n
-    :return:
+    :return: \n
+    script: \n
+        更新：如果上传的文件名存在同名的，会删掉旧文件，并清除旧文件的清洗结果 \n
+        因为状态码为2，表示清洗完成，为了避免出现问题，建议每次上传文件后都调用查状态接口，这样前面清洗完成了，再上传一个同名文件，就不会出现状态错误的问题
     """
     if not file:
         return JSONResponse(
@@ -130,7 +133,9 @@ async def status(user_id: str = ""):
     """
     查询文件清洗状态 \n
     :param user_id: \n
-    :return:
+    :return: \n
+    script: \n
+        更新：添加一个参数：status_type --> 0 未开始（没有该用户的缓存数据），1 进行中(有数据未清洗完成)，2 已完成（上传的文件已全部清洗完成）
     """
     if not user_id or user_id == "" or user_id is None or user_id == " ":
         return JSONResponse(
@@ -143,7 +148,7 @@ async def status(user_id: str = ""):
         )
     try:
         # 获取文件状态
-        result = await get_status(user_id)
+        status_type, result = await get_status(user_id)
     except Exception as e:
         return JSONResponse(
             status_code=500,
@@ -160,6 +165,7 @@ async def status(user_id: str = ""):
             "message": "success",
             "data": {
                 "user_id": user_id,
+                "status_type": status_type,
                 "status": result
             }
             # "data": {"status": status}

@@ -66,6 +66,13 @@ async def save_file(file: UploadFile, user_id: str = "") -> str:
     upload_dir, temp_dir, result_dir = await create_dir(user_id)
     file_path = os.path.join(upload_dir, file.filename)
 
+    if os.path.exists(file_path):
+        print(f"文件已存在，删除旧文件: {file_path}")
+        os.remove(file_path)
+        result_path = result_dir + "/" + os.path.splitext(file.filename)[0] + ".md"
+        if os.path.exists(result_path):
+            os.remove(result_path)
+            print(f"删除旧文件: {result_path}")
     # 保存文件到本地
     try:
         with open(file_path, "wb") as buffer:

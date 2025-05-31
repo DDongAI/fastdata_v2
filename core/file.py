@@ -95,6 +95,9 @@ async def get_status(user_id: str):
     """
     # 获取用户文件夹
     user_dir, upload_dir, temp_dir, result_dir = get_dir(user_id)
+
+    if not os.path.exists(upload_dir) or not os.path.exists(result_dir):
+        return 0, None
     # 上传集
     # files_list = os.listdir(upload_dir)
     files_list = [os.path.splitext(f)[0] for f in os.listdir(upload_dir)]
@@ -108,5 +111,7 @@ async def get_status(user_id: str):
     for file in result_list:
         result[file] = True
 
-    return result
-
+    if False in result.values():
+        return 1, result
+    else:
+        return 2, result
