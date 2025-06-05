@@ -49,6 +49,7 @@ class Settings:
     VERSION: str = os.getenv("VERSION", "v1.0")
     API_V1_STR: str = "/api/v1"
 
+    # 允许访问的ip地址
     ALLOWED_ORIGINS: list = [
         "127.0.0.1",
         "14.145.46.218",
