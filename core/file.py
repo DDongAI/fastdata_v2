@@ -7,6 +7,7 @@ from PIL import Image
 from fastapi import UploadFile, HTTPException, File
 
 from config.config import settings
+from services.db_token import db
 from services.llm import chat_service
 from core.tools import verify_file_type, read_text_file, create_dir, get_dir
 
@@ -29,6 +30,7 @@ async def pdf_ocr_service(file: str, user_id: str = ""):
     pdf_document = fitz.open(file)
     print(f"PDF总页数: {len(pdf_document)}")
     result = ""
+    total_tokens = 0
     for page_number in range(pdf_document.page_count):
         # 加载页面，将pdf的每一页转为图片
         page = pdf_document.load_page(page_number)
@@ -57,10 +59,11 @@ async def pdf_ocr_service(file: str, user_id: str = ""):
         bytes_data = io.BytesIO()
         image_contents.save(bytes_data, format='PNG')  # 保存图像到BytesIO对象，格式可以是JPEG, PNG等
         bytes_data = bytes_data.getvalue()
-        image_md = await chat_service.generate_response(bytes_data)
+        tokens, image_md = await chat_service.generate_response(bytes_data)
         image_md = re.sub(r"```markdown", "", image_md)
         image_md = re.sub(r"```(?=$|\n)", "", image_md)
         result += image_md
+        total_tokens = total_tokens + tokens
 
     # 关闭文档
     pdf_document.close()
@@ -84,6 +87,8 @@ async def pdf_ocr_service(file: str, user_id: str = ""):
     result_file = result_dir + f"/{file_name}.md"
     with open(result_file, 'w', encoding='utf-8') as file:
         file.write(result)
+    # 存储token数量
+    await db.create_token_record(user_id, file_name, total_tokens)
     return result
 
 

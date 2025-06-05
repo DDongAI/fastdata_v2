@@ -27,7 +27,7 @@ async def image_ocr_service(image: UploadFile = File(...)):
     try:
         # print(image_contents)
         # 识别图片
-        result = await chat_service.generate_response(image_contents)
+        total_tokens, result = await chat_service.generate_response(image_contents)
         return result
     except HTTPException as e:
         raise HTTPException(

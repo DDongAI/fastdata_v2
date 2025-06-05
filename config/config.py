@@ -49,6 +49,18 @@ class Settings:
     VERSION: str = os.getenv("VERSION", "v1.0")
     API_V1_STR: str = "/api/v1"
 
+    ALLOWED_ORIGINS: list = [
+        "127.0.0.1",
+        "14.145.46.218",
+        "192.168.10.122",
+        "192.168.10.126",
+        "157.148.20.68",
+        "157.148.20.69",
+        "157.148.21.116",
+        "14.145.84.2"
+    ]
+    # 数据库配置
+    DB_PATH = "token.db"
     # 文件上传配置
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE: int = 5 * 1024 * 1024  # 5MB
